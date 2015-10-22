@@ -1,2 +1,8 @@
-# php-pathconfig
-Path configuration library for PHP frameworks
+# PathConfig
+
+A path configuration library for PHP frameworks
+
+## Introduction
+
+
+
