@@ -48,9 +48,16 @@ In your application's `bootstrap/app.php` file, swap the existing `Illuminate` A
 
 The `$app` instance loads your path configuration, and provides overriden path methods within the class to your configured paths.
 
-There are a few files that will need to be updated to reference the path configuration:
+There are various locations that **will** need to be updated if they reference any moved folders:
  
-- to do
+File > location| Search | Replace
+:-- | :-- | :--
+artisan | bootstrap/ | *path to bootstrap*
+public/index.php | ../bootstrap/ | *path to bootstrap*
+bootstrap/autoload.php | ../vendor/ | *path to vendor*
+bootstrap/app.php | $app = new Illuminate\Foundation\Application(...); | $app = new pathconfig\apps\ &lt;Class&gt; ;
+composer.json > autoload | database | *path to database*
+composer.json > autoload-dev | tests/ | *path to tests*
 
 Everything else remains the same.
 
