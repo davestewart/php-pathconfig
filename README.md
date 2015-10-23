@@ -6,7 +6,7 @@ The library's main purpose it to allow restructuring of applications, working ar
 
 The animation below demonstrates restructuring a Laravel 5 project to silo less-used components to a "support" folder:
 
-![path-config](https://cloud.githubusercontent.com/assets/132681/10691094/69c02270-797e-11e5-9207-a3bbf2edd40b.gif)
+![path-config](https://cloud.githubusercontent.com/assets/132681/10692334/bd8cc5ac-7988-11e5-8c25-513a01e03f54.gif)
 
 The library provides both helper classes and Application class stubs to facilitate this.
 
