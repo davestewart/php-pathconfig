@@ -23,13 +23,6 @@ namespace pathconfig
             protected static $_instance;
 
             /**
-             * The application's base path
-             *
-             * @var string
-             */
-            protected $basepath = '';
-
-            /**
              * Array of system paths
              *
              * @var array
@@ -45,7 +38,14 @@ namespace pathconfig
 
 
         // -----------------------------------------------------------------------------------------------------------------
-        // flags
+        // options
+
+            /**
+             * The application's base path
+             *
+             * @var string
+             */
+            protected $basepath = '';
 
             /**
              * Converts slashes when setting or getting paths, defaults to true
@@ -111,7 +111,7 @@ namespace pathconfig
             }
 
             /**
-             * Set a flag
+             * Set an option
              *
              * Options are:
              *
@@ -127,34 +127,34 @@ namespace pathconfig
              * @throws \Exception
              * @return $this
              */
-            public function flag($name, $value)
+            public function option($name, $value)
             {
                 // setting name
                 $name = strtolower($name);
 
-                // update settings
-                if(property_exists($this, $name))
+                // disable some paths from being changed once paths are loaded
+                if(count($this->paths) && in_array($name, ['basepath', 'convertslashes', 'trimslashes']))
                 {
-                    // only allow slash-related flags to be changed if paths have not yet loaded
-                    if(in_array($name, ['convertslashes', 'trimslashes']) && count($this->paths))
-                    {
-                        throw new \Exception('PathConfig settings cannot be changed once paths are loaded');
-                    }
+                    throw new \Exception('Option "' .$name. '" cannot be changed once paths are loaded');
+                }
 
-                    // update settings
-                    switch($name)
-                    {
-                        case 'convertslashes':
-                            if($value === true || $value === false || $value === 'auto')
-                            {
-                                $this->convertslashes = $value;
-                                $this->separator = DIRECTORY_SEPARATOR;
-                            }
-                            break;
+                // update settings
+                switch($name)
+                {
+                    case 'convertslashes':
+                        if($value === true || $value === false || $value === 'auto')
+                        {
+                            $this->convertslashes = $value;
+                            $this->separator = DIRECTORY_SEPARATOR;
+                        }
+                        break;
 
-                        default:
-                            $this->$name = $value;
-                    }
+                    case 'basepath':
+                    case 'trimslashes':
+                    case 'testpaths':
+                    case 'mutable':
+                        $this->$name = $value;
+                        break;
                 }
                 return $this;
             }
@@ -206,8 +206,11 @@ namespace pathconfig
                     // set separator
                     preg_match('%[\/]%', implode('', $paths), $matches);
                     $this->separator =  count($matches) ? $matches[0] : DIRECTORY_SEPARATOR;
+                }
 
-                    // convert base
+                // convert base
+                if($this->convertslashes)
+                {
                     $this->basepath = $this->fix($this->basepath);
                 }
 
@@ -268,16 +271,16 @@ namespace pathconfig
              */
             public function set($key, $value)
             {
+                // ignore setting of base bath
+                if($key === 'base')
+                {
+                    return false;
+                }
+
+                // set path
                 if($this->mutable || ! array_key_exists($key, $this->paths) )
                 {
-                    if($key === 'base' && ! $this->basepath)
-                    {
-                        $this->basepath = $this->fix($value);
-                    }
-                    else
-                    {
-                        $this->paths[$key] = $this->fix($value);
-                    }
+                    $this->paths[$key] = $this->fix($value);
                     return true;
                 }
                 return false;
@@ -327,7 +330,7 @@ namespace pathconfig
                         $config = $path . '/paths.php';
                         if(file_exists($config))
                         {
-                            $this->basepath = $this->fix($path);
+                            $this->option('basepath', $this->fix($path));
                             break;
                         }
                     }
@@ -376,30 +379,33 @@ namespace pathconfig
             }
 
             /**
-             * Safe version of PHP realpath that doesn't return null for non-existant paths
+             * Safe version of PHP realpath() that doesn't return null for non-existant paths
              *
-             * @param $path
+             * @param string $source
              * @return string
              */
-            protected function real($path)
+            protected function real($source)
             {
                 // variables
-                $output = $path;
-                $input  = str_replace('\\', '/', $path);
+                $output = $source;
+                $input  = str_replace('\\', '/', $source);
 
                 // test input
                 if(preg_match('%^.{1,2}/|/\.{1,2}|/{2,}/%', $input))
                 {
+                    // variables
+                    $root   = '';
+                    $path   = $input;
+
                     // respect drive or UNC
-                    $root = '';
                     if(preg_match('%^(\w:/|//\w+/)(.*)%', $input, $matches))
                     {
                         $root = $matches[1];
-                        $input = $matches[2];
+                        $path = $matches[2];
                     }
 
                     // split input
-                    $src = explode('/', $input);
+                    $src = explode('/', $path);
 
                     // build output
                     $trg = array();
