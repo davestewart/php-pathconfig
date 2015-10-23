@@ -16,25 +16,85 @@ namespace pathconfig
 
             /**
              * Static instance property
+             *
              * @var PathConfig
              */
             protected static $_instance;
 
             /**
+             * The application's base path
+             *
+             * @var string
+             */
+            protected $basepath = '';
+
+            /**
              * Array of system paths
+             *
              * @var array
              */
             protected $paths = array();
 
             /**
-             * Boolean to set use of safe realpath
+             * Directory separator to use
+             *
              * @var
              */
-            public $safepath;
+            protected $separator = DIRECTORY_SEPARATOR;
+
+
+        // -----------------------------------------------------------------------------------------------------------------
+        // flags
+
+            /**
+             * Converts slashes when setting or getting paths, defaults to true
+             *
+             * Options are:
+             *
+             *  - true      : convert slashes to the platform preference
+             *  - false     : leave all slashes as supplied
+             *  - "auto"    : convert to using the first slash type found in config file
+             *
+             * @var mixed
+             */
+            public $convertslashes = true;
+
+            /**
+             * Trim trailing slashes on folders, defaults to false
+             *
+             * @var bool
+             */
+            public $trimslashes = true;
+
+            /**
+             * Test paths exist when setting, defaults to false
+             *
+             * @var bool
+             */
+            public $testpaths = false;
+
+            /**
+             * Allow existing path values: to be overwritten, defaults to false
+             *
+             * @var bool
+             */
+            public $mutable = false;
 
 
         // -----------------------------------------------------------------------------------------------------------------
         // instantiation
+
+            /**
+             * Constructor
+             */
+            protected function __construct()
+            {
+                static::$_instance = $this;
+            }
+
+
+        // -----------------------------------------------------------------------------------------------------------------
+        // configuration
 
             /**
              * Static get instance method
@@ -50,55 +110,107 @@ namespace pathconfig
             }
 
             /**
-             * Constructor
+             * Set a flag
+             *
+             * Options are:
+             *
+             *  - testpaths
+             *  - convertslashes
+             *  - trimslashes
+             *  - mutable
+             *
+             * Note that slash-related settings can only be set before paths are loaded
+             *
+             * @param string $name
+             * @param mixed $value
+             * @throws \Exception
+             * @return $this
              */
-            protected function __construct()
+            public function flag($name, $value)
             {
-                static::$_instance = $this;
+                // setting name
+                $name = strtolower($name);
+
+                // update settings
+                if(property_exists($this, $name))
+                {
+                    // only allow slash-related flags to be changed if paths have not yet loaded
+                    if(in_array($name, ['convertslashes', 'trimslashes']) && count($this->paths))
+                    {
+                        throw new \Exception('PathConfig settings cannot be changed once paths are loaded');
+                    }
+
+                    // update settings
+                    switch($name)
+                    {
+                        case 'convertslashes':
+                            if($value === true || $value === false || $value === 'auto')
+                            {
+                                $this->convertslashes = $value;
+                                $this->separator = DIRECTORY_SEPARATOR;
+                            }
+                            break;
+
+                        default:
+                            $this->$name = $value;
+                    }
+                }
+                return $this;
             }
 
-
-        // -----------------------------------------------------------------------------------------------------------------
-        // public methods
-
             /**
-             * Initialize the class and load the paths config
+             * Load the paths config
              *
              * This function MUST be called before using the class
              *
-             * @param string    $basePath       The absolute path TO the base folder from the PathConfig location
-             * @param string    $configPath     An optional relative path FROM the base folder TO the folder of the `paths.php` configuration file. Leave empty to use the base folder.
-             * @return PathConfig
+             * @param string    $path       An optional absolute or relative path to the `paths.php` folder. Leave empty to use the base folder
              * @throws \InvalidArgumentException
+             * @return $this
              */
-            public function load($basePath = null, $configPath = null)
+            public function load($path = null)
             {
-                // resolve base path
-                $base = $basePath ?: $this->root();
+                // initialize / test basebath
+                $this->initialize();
 
-                // base path
-                if( ! $base )
+                // absolute path
+                if( file_exists($path) )
                 {
-                    throw new \InvalidArgumentException('Base path "' .$basePath. '" doesn\'t resolve to a folder');
+                    $config = is_file($path)
+                        ? $path
+                        : realpath($path . '/paths.php');
                 }
 
-                // set base path
-                $base = $this->paths['base'] = $this->fix($base . '/');
-
-                // config path
-                $config = realpath($base . $configPath . '/paths.php');
-                if( ! $config )
+                // relative path
+                else
                 {
-                    throw new \InvalidArgumentException('Config path "' .$base .$configPath. '" doesn\'t resolve to a "paths.php" configuration file');
+                    // test if an actual config file was passed
+                    $path = preg_match('/paths\.php$/', $path)
+                        ? $path
+                        : $this->basepath . '/' . $path . '/paths.php';
+
+                    // resolve real file
+                    $config = realpath($path);
+                    if( ! $config )
+                    {
+                        throw new \InvalidArgumentException('Config path "' .$path. '" doesn\'t resolve to a configuration file');
+                    }
                 }
 
                 // load config
                 $paths = require $config;
 
-                // debug windows / unc
-                //$this->paths['base'] = 'c:/path/to/server/';
-                //$this->paths['base'] = '//SERVER/path/to/server/';
+                // detect directory separator if convertslashes is auto
+                if($this->convertslashes === 'auto')
+                {
+                    // set separator
+                    preg_match('%[\/]%', implode('', $paths), $matches);
+                    $this->separator =  count($matches) ? $matches[0] : DIRECTORY_SEPARATOR;
 
+                    // convert base
+                    $this->basepath = $this->fix($this->basepath);
+                }
+
+                // set paths
                 foreach($paths as $key => $value)
                 {
                     $this->set($key, $value);
@@ -108,31 +220,36 @@ namespace pathconfig
                 return $this;
             }
 
+
+        // -----------------------------------------------------------------------------------------------------------------
+        // public methods
+
             /**
              * Gets a path
              *
-             * @param string	$key		Optional key to the preset folder or file, i.e. 'config'
-             * @param string	$filepath 	Only if key exists, optional path to append to the returned root path, i.e. 'view.php'
+             * @param string	$key		Optional key to the assigned folder or file, i.e. 'config'
+             * @param string	$filepath 	Only if key has been supplied, an optional path to append to the returned root path, i.e. 'view.php'
              * @return string				The final folder or file path
              */
             public function get($key = '', $filepath = '')
             {
-                // default to base path for no arguments
-                if($key === '' && $filepath === '')
+                // if no arguments, or just 'base', return basepath
+                if( in_array($key.$filepath, ['base', '']) )
                 {
-                    $path = $this->paths['base'];
+                    $path       = $this->basepath;
                 }
 
-                // pick a configured path if a key is passed
+                // if a key is passed, pick a configured path
                 else if(isset($this->paths[$key]))
                 {
-                    $path = $this->realpath($this->paths[$key] . $filepath, true);
+                    $filepath   = $filepath ? $this->separator .$filepath : '';
+                    $path       = $this->make($this->paths[$key] . $filepath);
                 }
 
-                // otherwise, make a path from root
+                // if one argument, make a path from root
                 else
                 {
-                    $path = $this->make($key);
+                    $path       = $this->make($key);
                 }
 
                 // return
@@ -143,7 +260,6 @@ namespace pathconfig
              * Sets a path
              *
              * Note that the path is relative from the base folder
-             * Only allows setting of paths that don't yet exist
              *
              * @param string    $key        The path's key i.e. 'config'
              * @param string    $value      The path's value, i.e. 'support/config/'
@@ -151,9 +267,16 @@ namespace pathconfig
              */
             public function set($key, $value)
             {
-                if( ! array_key_exists($key, $this->paths) )
+                if($this->mutable || ! array_key_exists($key, $this->paths) )
                 {
-                    $this->paths[$key] = $this->make($value);
+                    if($key === 'base' && ! $this->basepath)
+                    {
+                        $this->basepath = $this->fix($value);
+                    }
+                    else
+                    {
+                        $this->paths[$key] = $this->fix($value);
+                    }
                     return true;
                 }
                 return false;
@@ -162,31 +285,82 @@ namespace pathconfig
             /**
              * Gets the current paths array
              *
+             * @param bool $full
              * @return array
              */
-            public function all()
+            public function all($full = true)
             {
-                return $this->paths;
+                // add basepath to the array
+                $paths = array( 'base' => $this->basepath );
+
+                // add rest of paths
+                foreach($this->paths as $key => $path)
+                {
+                    $paths[$key] = $full
+                        ? $this->make($path)
+                        : $path;
+                }
+
+                // return
+                return $paths;
             }
 
 
         // -----------------------------------------------------------------------------------------------------------------
         // utility functions
 
-            protected function root()
+            /**
+             * Initialize the library by attempting to locate the base path with `paths.php` in it
+             */
+            protected function initialize()
             {
-                $path = __DIR__;
-                $last = '';
-                while($path !== $last)
+                // if basepath hasn't been set, attempt to discover it by working back up the directory structure
+                if( ! $this->basepath )
                 {
-                    $last = $path;
-                    $path = realpath($path . '../');
-                    if(file_exists($path . '/paths.php'))
+                    $path = __DIR__;
+                    $last = '';
+                    while($path !== $last)
                     {
-                        return $path;
+                        $last   = $path;
+                        $path   = realpath($path . '/../');
+                        $config = $path . '/paths.php';
+                        if(file_exists($config))
+                        {
+                            $this->basepath = $this->fix($path);
+                            break;
+                        }
                     }
                 }
-                return false;
+
+                // test that the base path (supplied or found) exists
+                if( ! file_exists($this->basepath) )
+                {
+                    throw new \InvalidArgumentException('Base path "' .$this->basepath. '" doesn\'t resolve to a folder');
+                }
+            }
+
+            /**
+             * Utility function to massage path into the format specified by settings
+             *
+             * @param string $path
+             * @return string
+             */
+            protected function fix($path)
+            {
+                // convert slashes
+                if($this->convertslashes)
+                {
+                    $path = preg_replace('%[/\\\\]%', $this->separator, $path);
+                }
+
+                // trim trailing slashes
+                if($this->trimslashes)
+                {
+                    $path = preg_replace('%[/\\\\]+$%', '', $path);
+                }
+
+                // return
+                return $path;
             }
 
             /**
@@ -197,18 +371,7 @@ namespace pathconfig
              */
             protected function make($path)
             {
-                return $this->realpath($this->paths['base'] . $this->fix($path));
-            }
-
-            /**
-             * Utility function to convert any path to the OS format
-             *
-             * @param string $path
-             * @return string
-             */
-            protected function fix($path)
-            {
-                return preg_replace('%[\/]%', DIRECTORY_SEPARATOR, $path);
+                return $this->real($this->basepath . $this->separator . $path);
             }
 
             /**
@@ -217,24 +380,13 @@ namespace pathconfig
              * @param $path
              * @return string
              */
-            protected function realpath($path, $fix = false)
+            protected function real($path)
             {
-                // fix?
-                if($fix)
-                {
-                    $path = $this->fix($path);
-                }
-
-                // safe?
-                if($this->safepath)
-                {
-                    return realpath($path);
-                }
-
                 // variables
-                $output = $input = $path;
+                $output = $path;
+                $input  = str_replace('\\', '/', $path);
 
-                // test path
+                // test input
                 if(preg_match('%^.{1,2}/|/\.{1,2}|/{2,}/%', $input))
                 {
                     // respect drive or UNC
@@ -253,9 +405,18 @@ namespace pathconfig
                     while(count($src))
                     {
                         $str = array_shift($src);
-                        if($str == '.' || $str == '')continue;
-                        else if($str == '..')array_pop($trg);
-                        else $trg[] = $str;
+                        if($str == '.' || $str == '')
+                        {
+                            continue;
+                        }
+                        else if($str == '..')
+                        {
+                            array_pop($trg);
+                        }
+                        else
+                        {
+                            $trg[] = $str;
+                        }
                     }
 
                     // convert to string
@@ -265,8 +426,29 @@ namespace pathconfig
                     $output = $root . $output;
 
                     // respect leading and trailing slashes
-                    if(substr($input, 0, 1) == '/')$output = '/' . $output;
-                    if(substr($input, -1) == '/' && substr($output, -1) != '/')$output = $output . '/';
+                    if(substr($input, 0, 1) == '/')
+                    {
+                        $output = '/' . $output;
+                    }
+                    if(substr($input, -1) == '/' && substr($output, -1) != '/')
+                    {
+                        $output = $output . '/';
+                    }
+
+                    // if windows format, convert back
+                    if($this->separator === '\\')
+                    {
+                        $output = str_replace('/', '\\', $output);
+                    }
+                }
+
+                // test path
+                if($this->testpaths)
+                {
+                    if( ! file_exists($output) )
+                    {
+                        $output = false;
+                    }
                 }
 
                 // output
@@ -286,6 +468,3 @@ namespace pathconfig
     }
 
 }
-
-
-
