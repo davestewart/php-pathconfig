@@ -22,12 +22,12 @@ class Lumen extends \Laravel\Lumen\Application
         $this->paths            = \pathconfig\PathConfig::instance()->load();
 
         // construct
-        parent::__construct(path());
+        parent::__construct($this->paths->get());
 
         // update paths
-        $this->configPath       = path('config');
-        $this->resourcePath     = path('resources');
-        $this->storagePath      = path('storage');
+        $this->configPath       = $this->paths->get('config');
+        $this->resourcePath     = $this->paths->get('resources');
+        $this->storagePath      = $this->paths->get('storage');
     }
 
     /**
@@ -36,7 +36,7 @@ class Lumen extends \Laravel\Lumen\Application
       */
     public function databasePath()
     {
-        return realpath(path('database'));
+        return $this->paths->get('database');
     }
 
     /**
@@ -45,7 +45,7 @@ class Lumen extends \Laravel\Lumen\Application
       */
     protected function getLanguagePath()
     {
-        return path('lang');
+        return $this->paths->get('lang');
     }
 
 }

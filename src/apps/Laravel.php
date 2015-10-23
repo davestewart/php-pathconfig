@@ -33,7 +33,7 @@ class Laravel extends Application
         public function __construct()
         {
             $this->paths = PathConfig::instance()->load();
-            parent::__construct(rootpath());
+            parent::__construct($this->paths->get());
         }
 
     // -----------------------------------------------------------------------------------------------------------------
