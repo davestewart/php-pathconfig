@@ -4,10 +4,11 @@ namespace pathconfig
 {
 
     /**
-     * PathManager class
+     * PathConfig class
      *
      * Provides a single point of reference for all framework paths
      * Loads user configuration and handles getting and setting paths via keywords
+     * Manages language and platform specifics regarding slashes
      */
     class PathConfig
     {
