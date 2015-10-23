@@ -273,22 +273,19 @@ namespace pathconfig
                 return $output;
             }
 
+            /**
+             * Helper function to create global function alias to PathConfig::get()
+             *
+             * @param string $name
+             */
+            public static function alias($name = 'path')
+            {
+                eval('namespace { function ' .$name. '($key = "", $filepath = ""){ return pathconfig\PathConfig::instance()->get($key, $filepath); } }');
+            }
+
     }
 
 }
 
-namespace{
 
-    /**
-     * Helper function to shortcut to PathConfig::get()
-     *
-     * @param string $key
-     * @param string $filepath
-     * @return mixed
-     */
-    function path($key = '', $filepath = '')
-    {
-        return pathconfig\PathConfig::instance()->get($key, $filepath);
-    }
 
-}
