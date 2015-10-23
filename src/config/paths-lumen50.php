@@ -8,22 +8,22 @@
     return array
     (
         // app
-        'app'    		=> 'app/',
-        'public'   		=> 'public/',
+        'app'    		=> 'app',
+        'public'   		=> 'public',
 
         // routes
         'routes.php'    => 'app/Http/routes.php',
 
         // supporting files
-        'database'      => 'support/database/',
-        'storage'       => 'support/storage/',
-        'tests'         => 'support/tests/',
+        'database'      => 'support/database',
+        'storage'       => 'support/storage',
+        'tests'         => 'support/tests',
 
         // optional config path. uncomment to use config folder, then copy files from `vendor/laravel/lumen-framework/config` to get started
-        //'config'      => 'support/config/',
+        //config'       => 'support/config',
 
         // resources
-        'resources'     => 'resources/',
-        'lang'          => 'resources/lang/',
-        'views'         => 'resources/views/'
+        'resources'     => 'resources',
+        'lang'          => 'resources/lang',
+        'views'         => 'resources/views'
     );
