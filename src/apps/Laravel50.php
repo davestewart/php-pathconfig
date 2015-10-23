@@ -6,10 +6,11 @@ use Illuminate\Foundation\Application;
 use pathconfig\PathConfig;
 
 /**
- * Class Laravel
+ * Replacement Application class for Laravel 5.0 apps
+ *
  * @package davestewart\pathconfig
  */
-class Laravel extends Application
+class Laravel50 extends Application
 {
 
     // -----------------------------------------------------------------------------------------------------------------
@@ -32,7 +33,10 @@ class Laravel extends Application
          */
         public function __construct()
         {
+            // load paths
             $this->paths = PathConfig::instance()->load();
+
+            // parent constructor manages all path setup
             parent::__construct($this->paths->get());
         }
 
