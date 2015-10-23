@@ -115,9 +115,10 @@ namespace pathconfig
              *
              * Options are:
              *
-             *  - testpaths
+             *  - basepath
              *  - convertslashes
              *  - trimslashes
+             *  - testpaths
              *  - mutable
              *
              * Note that slash-related settings can only be set before paths are loaded
