@@ -2,16 +2,20 @@
 
 PathConfig allows a single point of configuration for your application's paths.
 
-This is useful when you want to restructure your application, and need to work around existing framework limitations.
+The library's main purpose it to allow restructuring of applications, working around framework's existing limitations.
 
-The library provides both helper classes and Application class stubs to facilitate this.  
+The animation below demonstrates restructuring a Laravel 5 project to silo less-used components to a "support" folder:
+
+![path-config](https://cloud.githubusercontent.com/assets/132681/10691094/69c02270-797e-11e5-9207-a3bbf2edd40b.gif)
+
+The library provides both helper classes and Application class stubs to facilitate this.
 
 ## Features
 
-- A single configuration file stored in the project root provides all paths
-- Root-relative paths are referenced by keyword such as `config` or `storage`
-- Paths are grabbed using the global `path()` function, or can call on the PathConfig instance directly
-- You may also add your own paths, which are resolved from the automatically-configured `base` path
+- A single root-level configuration file of project paths
+- Named root-relative paths such as `config` or `storage`
+- Ability to add additional paths programatically
+- Integration with existing frameworks (Lumen and Laravel currently supported)
 
 ## Configuration
 
