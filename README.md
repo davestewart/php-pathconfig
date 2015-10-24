@@ -60,7 +60,7 @@ As soon as this has loaded, you're free to call `get()` methods on the `$paths` 
 
 ### With Laravel or Lumen
 
-Assuming you have already edited your configuration file, there are 4 steps you need to take to refactor your app:
+Assuming you have already **copied and edited your configuration file** there are 4 steps you need to take to refactor your app:
  
 1. Replace the default Application instance 
 2. Physically move the framework folders
@@ -79,24 +79,50 @@ Make sure to use the appropriate class for your framework and version.
 
 **Secondly**, make sure you physically *move* the folders on your hard disk, reflecting the paths in your config file.
 
-**Thirdly**, update any framework files that may refer to your moved folders:
+**Thirdly**, update and and ALL framework files that may refer to your moved folders:
+
+#### Laravel
 
 File > location| Search | Replace
 :-- | :-- | :--
 artisan | bootstrap/ | *path to bootstrap*
 public/index.php | ../bootstrap/ | *path to bootstrap*
 bootstrap/autoload.php | ../vendor/ | *path to vendor*
-bootstrap/app.php | $app = new Illuminate\Foundation\Application(...); | $app = new pathconfig\apps\ &lt;Class&gt; ;
-composer.json > autoload | database | *path to database*
-composer.json > autoload-dev | tests/ | *path to tests*
+bootstrap/app.php | $app = new Illuminate\Foundation\Application(...); | $app = new pathconfig\apps\Laravel50; *(or 51)*
+composer.json (autoload) | database | *path to database*
+composer.json (autoload-dev) | tests/ | *path to tests*
+
+#### Lumen
+
+File > location| Search | Replace
+:-- | :-- | :--
+artisan | bootstrap/ | *path to bootstrap*
+public/index.php | ../bootstrap/ | *path to bootstrap*
+bootstrap/app.php (autoload) | ../vendor/ | *path to vendor*
+bootstrap/app.php (Dotenv) | ../ | *path to root*
+bootstrap/app.php (Application) | $app = new Laravel\Lumen\Application(...); | $app = new pathconfig\apps\Lumen50;
+bootstrap/app.php (Routes) | require \_\_DIR\_\_.'/../app/Http/routes.php'; | require $app->getPath('routes.php');
+composer.json (autoload) | database | *path to database*
+composer.json (autoload-dev) | tests/ | *path to tests*
+
 
 **Finally**, dump Composer's autoload with `composer dump-autoload`.
- 
+
 At this point, you should be able to reload your application, and everything should just work.
 
-If your app errors, double-check your path edits, and make sure they are correct.
+### Debugging it when it doesn't work first time
+
+If your app errors, double-check your path edits (it's ALL about the path edits at this stage!) and make sure they are correct:
+
+- Errors running `composer dump-autoload` - re-check your comsposer.json file
+- Errors in the browser - read the error messages, locate the files, and fix the paths
+- are you making a silly mistake with Lumen or Laravel's mucky concatenation of `../` fragments?
+- did you *actually* move the folders you are now referencing!?
+
 
 ## Getting and setting paths
+
+Now you are up and running, you can start pulling paths out of your config.
 
 Get paths directly from instance using the `get()` method:
 
@@ -106,7 +132,7 @@ $config = $paths->get('config');
 //  /home/vagrant/code/project.app/support/config/
 ```
 
-To resolve an additional filepath (which also resolves any ../ references) add it as the second argument:
+To append an additional filepath (which also resolves any ../ references) add it as the second argument:
 
 ```php
 $file = $paths->get('config', 'path/to/file.php');
@@ -114,14 +140,14 @@ $file = $paths->get('config', 'path/to/file.php');
 //  /home/vagrant/code/project.app/support/config/path/to/file.php
 ```
 
-Passing a single argument that is NOT a key resolves the path from the base folder:
+Passing a single argument that is NOT an existing path key resolves the path from the base folder:
 
 ```php
 $file = $paths->get('path/to/file/from/root.php');
 
 //  /home/vagrant/code/project.app/path/to/file/from/root.php
 ```
-Passing no arguments returns the base folder:
+Passing no arguments (or the word `base`) returns the base folder:
 
 ```php
 $root = $paths->get();
@@ -143,7 +169,7 @@ $root = $paths->all();
 //  )
 ```
 
-Pass `false` to return relative paths.
+Pass `false` to return the same array, but with relative paths.
 
 Set additional paths new path using `set()`:
 
@@ -162,10 +188,10 @@ By default they are set to mimic PHP's `realpath()` which outputs differently de
 To set a new base path:
 
 ```php
-$paths->option('basepath', $value);
+$paths->option('base', $value);
 ```
 
-The base path can only be set before paths are loaded.
+Note that the base path can be set only before paths are loaded.
 
 ### Convert slashes
 
@@ -190,9 +216,11 @@ Some frameworks expect trailing slashes, some don't. To preserve trailing slashe
 $paths->option('trimslashes', false);
 ```
 
+Note that none of the slash-related options will take effect after loading paths.
+
 ### Test paths exist
 
-By default the library doesn't test passed in paths to see if they exist, however PHP's realpath does. To mimic this behaviour call:
+By default the library doesn't test passed in paths to see if they exist in the way that PHP's realpath does. To mimic this behaviour call:
 
 ```php
 $paths->option('testpaths', true);
@@ -200,13 +228,13 @@ $paths->option('testpaths', true);
 
 ### Allow paths to be set more than once
 
-The library allows only allows you to set paths one, but you can override this by setting the `mutable` option to false:
+The library allows only allows you to set paths once, but you can override this by setting the `mutable` option to false:
 
 ```php
 $paths->option('mutable', 'false');
 ```
 
-## Additional info 
+## Additional functionality 
 
 ### To alias the get() method as a global function
 
@@ -233,7 +261,6 @@ Both methods will create a global helper method called `path()` than you can use
 $path = path('config', 'email.php');
 ```
 
-
 ### To load paths from a custom location
 
 If you want to move your paths config file to a custom location, you'll need to set both the basepath and config paths manually: 
@@ -251,10 +278,3 @@ Note that base paths should be absolute, but the config path:
  - can be just the folder reference (will default to `paths.php`)
  - can be the path to the filename such as `my-paths.php`
 
-### How PathConfig works
-
-Once the library is loaded, it will:
- 
-- add that folder to the config as the `base` path
-- load the configured paths
-- add them internally, converting and trimming slashes depending on the options set
