@@ -84,6 +84,18 @@ class Laravel50 extends Application
     // getters
 
         /**
+         * Get any path via the PathConfig object
+         *
+         * @param string $key
+         * @param string $filepath
+         * @return string
+         */
+        public function getPath($key = '', $filepath = '')
+        {
+            return $this->paths->get($key, $filepath);
+        }
+
+        /**
          * Get the path to the application "app" directory.
          *
          * @return string
