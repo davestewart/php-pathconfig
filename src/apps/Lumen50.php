@@ -51,6 +51,18 @@ class Lumen50 extends \Laravel\Lumen\Application
     // getters
 
         /**
+         * Get any path via the PathConfig object
+         *
+         * @param string $key
+         * @param string $filepath
+         * @return string
+         */
+        public function getPath($key = '', $filepath = '')
+        {
+            return $this->paths->get($key, $filepath);
+        }
+
+        /**
           * Override hardcoded database path
          *
           * @return string
