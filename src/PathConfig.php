@@ -48,6 +48,13 @@ namespace pathconfig
             protected $basepath = '';
 
             /**
+             * The application's base path name
+             *
+             * @var string
+             */
+            protected $basename = 'base';
+
+            /**
              * Converts slashes when setting or getting paths, defaults to true
              *
              * Options are:
@@ -88,9 +95,12 @@ namespace pathconfig
             /**
              * Constructor
              */
-            protected function __construct()
+            protected function __construct($basepath = null)
             {
-                static::$_instance = $this;
+                if($basepath)
+                {
+                    $this->option('basepath', $basepath);
+                }
             }
 
 
@@ -116,6 +126,7 @@ namespace pathconfig
              * Options are:
              *
              *  - basepath
+             *  - basename
              *  - convertslashes
              *  - trimslashes
              *  - testpaths
@@ -151,6 +162,7 @@ namespace pathconfig
                         break;
 
                     case 'basepath':
+                    case 'basename':
                     case 'trimslashes':
                     case 'testpaths':
                     case 'mutable':
@@ -216,10 +228,7 @@ namespace pathconfig
                 }
 
                 // set paths
-                foreach($paths as $key => $value)
-                {
-                    $this->set($key, $value);
-                }
+                $this->set($paths);
 
                 // return this
                 return $this;
@@ -238,8 +247,8 @@ namespace pathconfig
              */
             public function get($key = '', $filepath = '')
             {
-                // if no arguments, or just 'base', return basepath
-                if( in_array($key.$filepath, ['base', '']) )
+                // if no arguments, or the basepath alias, return basepath
+                if( in_array($key.$filepath, [$this->basename, '']) )
                 {
                     $path       = $this->basepath;
                 }
@@ -266,25 +275,38 @@ namespace pathconfig
              *
              * Note that the path is relative from the base folder
              *
-             * @param string    $key        The path's key i.e. 'config'
+             * @param mixed     $key        An array of key/path values
+             * @param mixed     $key        The path's key i.e. 'config'
              * @param string    $value      The path's value, i.e. 'support/config/'
              * @return bool                 true or false if set
              */
             public function set($key, $value)
             {
-                // ignore setting of base bath
-                if($key === 'base')
+                // set a single path
+                if(is_string($key))
                 {
-                    return false;
+                     // ignore setting of base bath
+                    if($key !== $this->basename)
+                    {
+                        // set path
+                        if($this->mutable || ! array_key_exists($key, $this->paths) )
+                        {
+                            $this->paths[$key] = $this->fix($value);
+                        }
+                    }
                 }
 
-                // set path
-                if($this->mutable || ! array_key_exists($key, $this->paths) )
+                // set an array of paths
+                else if(is_array($key))
                 {
-                    $this->paths[$key] = $this->fix($value);
-                    return true;
+                    foreach($key as $k => $v)
+                    {
+                        $this->set($k, $v);
+                    }
                 }
-                return false;
+
+                // return
+                return $this;
             }
 
             /**
@@ -296,7 +318,7 @@ namespace pathconfig
             public function all($full = true)
             {
                 // add basepath to the array
-                $paths = array( 'base' => $this->basepath );
+                $paths = array( $this->basename => $this->basepath );
 
                 // add rest of paths
                 foreach($this->paths as $key => $path)
