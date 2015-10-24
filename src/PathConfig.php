@@ -335,12 +335,19 @@ namespace pathconfig
                             break;
                         }
                     }
+
+                    // check if the paths configuration was found
+                    if( ! file_exists($this->basepath) )
+                    {
+                        throw new \Exception('The paths configuration file `paths.php` was not found anywhere on the path "' .__DIR__. '" ');
+                    }
+
                 }
 
                 // test that the base path (supplied or found) exists
                 if( ! file_exists($this->basepath) )
                 {
-                    throw new \InvalidArgumentException('Base path "' .$this->basepath. '" doesn\'t resolve to a folder');
+                    throw new \Exception('The supplied base path "' .$this->basepath. '" does not exist');
                 }
             }
 
